@@ -1,0 +1,36 @@
+
+import numpy as np
+from sklearn.metrics import (
+    accuracy_score, f1_score, precision_recall_fscore_support,
+    confusion_matrix, roc_auc_score
+)
+
+def compute_metrics(labels, preds, probs):
+    accuracy = accuracy_score(labels, preds)
+    f1_macro = f1_score(labels, preds, average="macro")
+    f1_weighted = f1_score(labels, preds, average="weighted")
+
+    precision, recall, f1_class, support = precision_recall_fscore_support(
+        labels, preds, average=None, zero_division=0
+    )
+
+    cm = confusion_matrix(labels, preds)
+    tn, fp, fn, tp = cm.ravel()
+
+    sensitivity = tp / (tp + fn) if (tp + fn) else 0
+    specificity = tn / (tn + fp) if (tn + fp) else 0
+
+    auc_roc = roc_auc_score(labels, probs[:, 1])
+
+    return {
+        "accuracy": accuracy,
+        "f1_macro": f1_macro,
+        "f1_weighted": f1_weighted,
+        "sensitivity": sensitivity,
+        "specificity": specificity,
+        "auc_roc": auc_roc,
+        "confusion_matrix": cm,
+        "per_class_precision": precision,
+        "per_class_recall": recall,
+        "per_class_f1": f1_class,
+    }
