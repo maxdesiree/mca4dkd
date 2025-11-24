@@ -19,18 +19,19 @@ IMCA4DKD/
 │
 ├── config.py                 # Global configuration & hyperparameters
 │
-├── data                      # (User-provided) Dataset folder
+├── data/                     # (User-provided) Dataset folder
+│   ├── dataset.csv           # Tabular clinical data + image paths
+│   └── ecg_images/           # ECG images
 │
 ├── models/
 │   ├── multimodal.py         # Main multimodal architecture (image + tabular)
 │   └── cross_attention.py    # Bidirectional cross-attention module
 │
 ├── utils/
-│   ├── dataloader.py            # Custom PyTorch Dataset for multimodal ECG
+│   ├── dataset.py            # Custom PyTorch Dataset
 │   ├── transforms.py         # Image transforms
 │   ├── metrics.py            # Evaluation metrics
-│   └── plotting.py           # Training/validation curve plotting
+│   └── plotting.py           # Curve/visualisation utilities
 │
-├── train.py                  # Training script
-└── evaluate.py               # Test set
-
+├── train.py                  # Training script (10-fold or single-run)
+└── evaluate.py               # Evaluation on the held-out test set
