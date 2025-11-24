@@ -11,27 +11,5 @@ Fusion + ensemble heads produce the final prediction
 We additionally provide an explainability module (XAI) able to quantify:
 ECG heatmaps (Grad-CAM)
 How does ECG change the importance of each clinical feature
-                      
-IMCA4DKD/
-│
-├── README.md                 # Project documentation
-├── requirements.txt          # Python dependencies
-│
-├── config.py                 # Global configuration & hyperparameters
-│
-├── data/                     # (User-provided) Dataset folder
-│   ├── dataset.csv           # Tabular clinical data + image paths
-│   └── ecg_images/           # ECG images
-│
-├── models/
-│   ├── multimodal.py         # Main multimodal architecture (image + tabular)
-│   └── cross_attention.py    # Bidirectional cross-attention module
-│
-├── utils/
-│   ├── dataset.py            # Custom PyTorch Dataset
-│   ├── transforms.py         # Image transforms
-│   ├── metrics.py            # Evaluation metrics
-│   └── plotting.py           # Curve/visualisation utilities
-│
-├── train.py                  # Training script (10-fold or single-run)
-└── evaluate.py               # Evaluation on the held-out test set
+
+Contact for usage: Prof Dinesh Kumar at dinesh.kumar@rmit.edu
