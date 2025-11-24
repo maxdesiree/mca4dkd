@@ -1,0 +1,58 @@
+# evaluate.py
+
+import torch
+import pandas as pd
+from torch.utils.data import DataLoader
+
+from models.multimodal import EnhancedMultimodalModel
+from utils.dataset import MultimodalECGDataset
+from utils.transforms import get_test_transform
+from utils.metrics import compute_metrics
+from config import *
+
+def evaluate_model(model_path="best_model.pth"):
+
+    df = pd.read_csv(CSV_PATH)
+
+    dataset = MultimodalECGDataset(
+        df,
+        image_transform=get_test_transform(),
+        tabular_features=[
+            "pulse", "sbp", "dbp", "height", "weight", "gender", "age"
+        ]
+    )
+
+    loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=False)
+
+    model = EnhancedMultimodalModel(num_tabular_features=7, num_classes=2)
+    model.load_state_dict(torch.load(model_path))
+    model = model.to(DEVICE)
+    model.eval()
+
+    preds, labels, probs = [], [], []
+
+    with torch.no_grad():
+        for images, tabs, lab in loader:
+            images, tabs = images.to(DEVICE), tabs.to(DEVICE)
+            outputs = model(images, tabs)
+
+            pr = torch.softmax(outputs, 1)
+            _, p = outputs.max(1)
+
+            preds.extend(p.cpu().numpy())
+            labels.extend(lab.numpy())
+            probs.extend(pr.cpu().numpy())
+
+    metrics = compute_metrics(
+        labels=np.array(labels),
+        preds=np.array(preds),
+        probs=np.array(probs)
+    )
+
+    print("Evaluation Results:")
+    for k, v in metrics.items():
+        if k != "confusion_matrix":
+            print(f"{k}: {v}")
+
+    print("\nConfusion Matrix:")
+    print(metrics["confusion_matrix"])
