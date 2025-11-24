@@ -1,0 +1,125 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torchvision.models as models
+
+from models.multimodal import EnhancedMultimodalModel
+
+class EnhancedMultimodalModel(nn.Module):
+
+    def __init__(self, num_tabular_features, num_classes=2, dropout_rate=0.5):
+        super().__init__()
+
+        self.image_encoder = models.resnet50(pretrained=False)
+        self.channel_attention = ChannelAttention(2048)
+        self.image_encoder.fc = nn.Identity()
+
+        self.image_projection = nn.Sequential(
+            nn.Linear(2048, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+            AttentionModule(512),
+            nn.Linear(512, 256)
+        )
+
+        self.tabular_encoder = nn.Sequential(
+            nn.Linear(num_tabular_features, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate * 0.8),
+
+            nn.Linear(256, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate * 0.8),
+
+            AttentionModule(128),
+            nn.Linear(128, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+        )
+
+        self.cross_attention = nn.MultiheadAttention(
+            embed_dim=64,
+            num_heads=4,
+            dropout=dropout_rate * 0.5,
+            batch_first=True
+        )
+
+        self.h1_proj = nn.Linear(256, 64)  # image → 64
+        self.h2_proj = nn.Linear(64, 64)   # tabular → 64
+
+        self.gate = nn.Sequential(
+            nn.Linear(128, 128),
+            nn.Sigmoid()
+        )
+
+        self.fusion = nn.Sequential(
+            nn.Linear(128, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate * 0.8),
+
+            nn.Linear(256, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate * 0.5)
+        )
+
+        self.classifier1 = nn.Linear(128, num_classes)
+        self.classifier2 = nn.Linear(128, num_classes)
+        self.classifier3 = nn.Linear(128, num_classes)
+
+        # trainable softmax weights
+        self.ensemble_weights = nn.Parameter(torch.ones(3) / 3)
+
+    def forward(self, images, tabular, return_features=False):
+
+        x = self.image_encoder.conv1(images)
+        x = self.image_encoder.bn1(x)
+        x = self.image_encoder.relu(x)
+        x = self.image_encoder.maxpool(x)
+        x = self.image_encoder.layer1(x)
+        x = self.image_encoder.layer2(x)
+        x = self.image_encoder.layer3(x)
+        x = self.image_encoder.layer4(x)
+
+        x = self.channel_attention(x)
+        x = F.adaptive_avg_pool2d(x, (1, 1)).view(x.size(0), -1)
+        h1 = self.image_projection(x)  # (B, 256)
+
+        h2 = self.tabular_encoder(tabular)  # (B, 64)
+
+        h1_proj = self.h1_proj(h1).unsqueeze(1)
+        h2_proj = self.h2_proj(h2).unsqueeze(1)
+
+        h2_attended, _ = self.cross_attention(h2_proj, h1_proj, h1_proj)
+        h2_prime = h2_attended.squeeze(1)
+
+        h1_attended, _ = self.cross_attention(h1_proj, h2_proj, h2_proj)
+        h1_prime = h1_attended.squeeze(1)
+
+        combined = torch.cat([h1_prime, h2_prime], dim=1)
+
+        gate = self.gate(combined)
+        combined = combined * gate
+        fused = self.fusion(combined)
+
+        if return_features:
+            return fused
+
+        w = F.softmax(self.ensemble_weights, dim=0)
+
+        out = (
+            w[0] * self.classifier1(fused) +
+            w[1] * self.classifier2(fused) +
+            w[2] * self.classifier3(fused)
+        )
+
+        return out
