@@ -14,22 +14,23 @@ How does ECG change the importance of each clinical feature
                       
 IMCA4DKD/
 │
-├── data/
-│   ├── dataset.csv
+├── README.md                 # Project documentation
+├── requirements.txt          # Python dependencies
+│
+├── config.py                 # Global configuration & hyperparameters
+│
+├── data                      # (User-provided) Dataset folder
 │
 ├── models/
-│   ├── multimodal.py          # already provided by you
-│   └── cross_attention.py     # already provided by you
+│   ├── multimodal.py         # Main multimodal architecture (image + tabular)
+│   └── cross_attention.py    # Bidirectional cross-attention module
 │
 ├── utils/
-│   ├── dataset.py
-│   ├── transforms.py
-│   ├── metrics.py
-│   └── plotting.py
+│   ├── dataloader.py            # Custom PyTorch Dataset for multimodal ECG
+│   ├── transforms.py         # Image transforms
+│   ├── metrics.py            # Evaluation metrics
+│   └── plotting.py           # Training/validation curve plotting
 │
-├── train.py
-├── evaluate.py
-├── config.py
-│
-├── requirements.txt
-└── README.md # You are here
+├── train.py                  # Training script
+└── evaluate.py               # Test set
+
