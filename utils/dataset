@@ -1,0 +1,29 @@
+import torch
+from torch.utils.data import Dataset
+from PIL import Image
+import pandas as pd
+
+class MultimodalECGDataset(Dataset):
+    def __init__(self, df, image_transform=None, tabular_features=None):
+        self.df = df
+        self.image_transform = image_transform
+        self.tabular_features = tabular_features
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        row = self.df.iloc[idx]
+
+        # Load ECG image
+        image = Image.open(row["image_path"]).convert("RGB")
+        if self.image_transform:
+            image = self.image_transform(image)
+
+        # Load tabular data
+        tab = torch.tensor(row[self.tabular_features].values, dtype=torch.float)
+
+        # Label
+        label = torch.tensor(int(row["label"]), dtype=torch.long)
+
+        return image, tab, label
